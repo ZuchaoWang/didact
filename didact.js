@@ -97,6 +97,7 @@ function updateDom(dom, prevProps, nextProps) {
     })
 }
 
+// commit is the action to make change visible to user
 // this is the last part of work of update that must be performed synchronously
 // it is triggered in workLoop
 function commitRoot() {
@@ -189,6 +190,8 @@ function workLoop(deadline) {
     shouldYield = deadline.timeRemaining() < 1
   }
 
+  // !nextUnitOfWork means no work can be done before commit
+  // wipRoot != null means we do have something to commit
   if (!nextUnitOfWork && wipRoot) {
     commitRoot()
   }
@@ -239,10 +242,10 @@ function useState(initial) {
   const oldHook =
     wipFiber.alternate &&
     wipFiber.alternate.hooks &&
-    wipFiber.alternate.hooks[hookIndex]
+    wipFiber.alternate.hooks[hookIndex] // fiber remembers state via index
   const hook = {
-    state: oldHook ? oldHook.state : initial,
-    queue: [],
+    state: oldHook ? oldHook.state : initial, // state will be initial only for new fiber, otherwise use old fiber's remembered value
+    queue: [], // queue is used to remember all state-updates actions, to be performed in one batch during next useState
   }
 
   // state update applied in next rerender's performUnitOfWork -> updateFunctionComponent -> execute function
@@ -254,9 +257,12 @@ function useState(initial) {
   // notice here action is a function: oldState => newState
   // does not support constant
   const setState = action => {
-    hook.queue.push(action)
+    // this queue remembers state-update action, later to be performed in batch in useState; so repeated setState will not take effect until useState is called
+    // this merges update, but still ensures next useState see the correct state value
+    // normally useState is only called once in component, so this update will wait until next rerender calls useState, and that is usually asynchronous (see below)
+    hook.queue.push(action) 
     // setState will update nextUnitOfWork so workLoop will pick it up to rerender automatically
-    // it seems that multiple action will only lead to one rerender, because workLoop does not run immediately
+    // it seems that multiple actions will only lead to one rerender, because workLoop does not run immediately
     // workLoop only runs when idle, so it's triggered asynchronously
     wipRoot = {
       dom: currentRoot.dom,
