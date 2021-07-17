@@ -234,6 +234,7 @@ function updateFunctionComponent(fiber) {
   hookIndex = 0
   wipFiber.hooks = []
   // execute the function, and the jsx-defined html become its only child
+  // here type is the function component, the function is called with props to produce the child createElement
   const children = [fiber.type(fiber.props)]
   reconcileChildren(fiber, children)
 }
