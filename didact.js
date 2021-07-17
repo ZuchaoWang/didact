@@ -1,3 +1,6 @@
+// JSX will be transformed to a call to createElement with proper arguments
+// this call will produce an object
+// text element will also be represented by object
 function createElement(type, props, ...children) {
   return {
     type,
@@ -22,6 +25,9 @@ function createTextElement(text) {
   }
 }
 
+// create actual dom element based on fiber of a host component
+// where a fiber corresponds to an element, together with its binding dom, and action to be peformed on dom
+// this is not directly used for function component
 function createDom(fiber) {
   const dom =
     fiber.type == "TEXT_ELEMENT"
@@ -39,6 +45,8 @@ const isProperty = key =>
 const isNew = (prev, next) => key =>
   prev[key] !== next[key]
 const isGone = (prev, next) => key => !(key in next)
+
+// update dom attrs when dom created or modified
 function updateDom(dom, prevProps, nextProps) {
   //Remove old or changed event listeners
   Object.keys(prevProps)
@@ -89,6 +97,8 @@ function updateDom(dom, prevProps, nextProps) {
     })
 }
 
+// this is the last part of work of update that must be performed synchronously
+// it is triggered in workLoop
 function commitRoot() {
   deletions.forEach(commitWork)
   commitWork(wipRoot.child)
@@ -96,6 +106,10 @@ function commitRoot() {
   wipRoot = null
 }
 
+// commit on one fiber
+// operation on dom can be place, update or delete dom
+// then traverse the fiber structure: first child, first child's first child, first child's second child, second child, sibling, ...
+// this is actually the second round of traversal (the first round is performed asynchronously in performOneUnitOfWork)
 function commitWork(fiber) {
   if (!fiber) {
     return
@@ -130,13 +144,15 @@ function commitWork(fiber) {
 }
 
 function commitDeletion(fiber, domParent) {
-  if (fiber.dom) {
+  if (fiber.dom) { // if has dom, this is a host component, directly corresponding to one html tag
     domParent.removeChild(fiber.dom)
-  } else {
+  } else { // if no dom, this must be a function component, which only has one child fiber, so recursively delete its only child
     commitDeletion(fiber.child, domParent)
   }
 }
 
+// render root element on root container
+// will only be called once, intialize fiber stuffs
 function render(element, container) {
   wipRoot = {
     dom: container,
